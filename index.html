@@ -1,0 +1,1008 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PolarGrid AI â€” Aurora Ridge Station</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a121b;
+    --bg-deep: #05090e;
+    --panel: #111d2b;
+    --panel-alt: #172533;
+    --border: #24384a;
+    --border-soft: #1b2c3b;
+    --text: #eaf1f6;
+    --text-dim: #90a6b8;
+    --text-faint: #566d80;
+    --ice: #4fc3e0;
+    --ice-dim: #244d5c;
+    --aurora: #57e0a8;
+    --amber: #f0ad4e;
+    --coral: #ef5f6b;
+    --diesel: #9fb0bd;
+    --grid-line: #17222d;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .mono{ font-family: 'IBM Plex Mono', monospace; }
+  ::selection{ background: var(--ice-dim); color: var(--text); }
+
+  /* ---------- App shell ---------- */
+  #app{
+    display:grid;
+    grid-template-rows: 58px 52px 1fr;
+    grid-template-areas:
+      "top"
+      "nav"
+      "main";
+    height:100vh;
+    background:
+      radial-gradient(1200px 600px at 85% -10%, rgba(79,195,224,0.05), transparent 60%),
+      var(--bg);
+  }
+
+  /* ---------- Brand block ---------- */
+  .brand{
+    display:flex; align-items:center; gap:10px;
+    flex-shrink:0;
+  }
+  .brand-mark{
+    width:26px; height:26px; position:relative; flex-shrink:0;
+  }
+  .brand-mark svg{ width:100%; height:100%; display:block; }
+  .brand-name{ font-weight:600; font-size:14.5px; letter-spacing:0.2px; }
+  .brand-sub{ font-size:10px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; letter-spacing:0.5px; margin-top:1px; }
+
+  /* ---------- Horizontal nav bar ---------- */
+  .navbar{
+    grid-area: nav;
+    display:flex; align-items:center; gap:2px;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--border-soft);
+    overflow-x:auto;
+  }
+  .nav-item{
+    display:flex; align-items:center; gap:7px;
+    padding: 8px 13px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    color: var(--text-dim);
+    cursor:pointer;
+    border-bottom: 2px solid transparent;
+    font-size:13px;
+    white-space:nowrap;
+    transition: color .12s ease, background .12s ease;
+  }
+  .nav-item svg{ width:15px; height:15px; flex-shrink:0; opacity:.8; }
+  .nav-item:hover{ color: var(--text); background: var(--panel); }
+  .nav-item.active{
+    color: var(--ice);
+    background: linear-gradient(180deg, rgba(79,195,224,0.09), transparent);
+    border-bottom: 2px solid var(--ice);
+  }
+  .nav-item.active svg{ opacity:1; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    grid-area: top;
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 0 22px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .station-select{
+    display:flex; align-items:center; gap:10px;
+  }
+  .station-select .name{ font-weight:600; font-size:15px; }
+  .station-select .coords{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text-faint);
+    padding: 2px 7px; border:1px solid var(--border); border-radius: var(--radius);
+  }
+  .status-pill{
+    display:flex; align-items:center; gap:6px;
+    font-family:'IBM Plex Mono', monospace; font-size:11px;
+    padding: 5px 10px; border:1px solid var(--border); border-radius: var(--radius);
+    color: var(--text-dim);
+  }
+  .status-pill .dot{ width:6px; height:6px; border-radius:50%; background:var(--aurora); box-shadow:0 0 6px var(--aurora); }
+  .top-right{ display:flex; align-items:center; gap:10px; }
+  .clock{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; color:var(--text-dim); text-align:right; }
+  .clock .date{ font-size:10px; color:var(--text-faint); }
+
+  /* ---------- Main ---------- */
+  main{
+    grid-area: main;
+    overflow-y: auto;
+    padding: 22px 26px 60px;
+  }
+  .view{ display:none; }
+  .view.active{ display:block; animation: fade .25s ease; }
+  @keyframes fade{ from{ opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);} }
+
+  .view-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:8px;}
+  .view-title{ font-size:19px; font-weight:600; }
+  .view-desc{ color:var(--text-dim); font-size:12.5px; margin-top:3px; }
+
+  /* ---------- Grid / panels ---------- */
+  .grid{ display:grid; gap:14px; }
+  .cols-5{ grid-template-columns: repeat(5, 1fr); }
+  .cols-4{ grid-template-columns: repeat(4, 1fr); }
+  .cols-3{ grid-template-columns: repeat(3, 1fr); }
+  .cols-2{ grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 1180px){ .cols-5{grid-template-columns:repeat(3,1fr);} .cols-4{grid-template-columns:repeat(2,1fr);} .cols-3{grid-template-columns:repeat(2,1fr);} }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    padding: 16px;
+    position: relative;
+  }
+  .panel-corner{
+    position:absolute; width:9px; height:9px;
+    border-color: var(--ice-dim);
+  }
+  .panel-corner.tl{ top:-1px; left:-1px; border-top:1px solid var(--ice); border-left:1px solid var(--ice); opacity:.55;}
+  .panel-corner.br{ bottom:-1px; right:-1px; border-bottom:1px solid var(--ice); border-right:1px solid var(--ice); opacity:.35;}
+
+  .panel-label{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.6px;
+    color: var(--text-faint); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .panel-title{ font-weight:600; font-size:14px; margin-bottom:12px; }
+
+  /* ---------- KPI cards ---------- */
+  .kpi{ display:flex; flex-direction:column; gap:6px; }
+  .kpi-value{ font-family:'IBM Plex Mono', monospace; font-size:28px; font-weight:600; line-height:1; }
+  .kpi-value .unit{ font-size:14px; color:var(--text-dim); font-weight:400; margin-left:2px;}
+  .kpi-delta{ font-size:11.5px; font-family:'IBM Plex Mono', monospace; }
+  .kpi-delta.up{ color: var(--aurora); }
+  .kpi-delta.down{ color: var(--coral); }
+  .kpi-bar{ height:4px; background:var(--grid-line); border-radius:2px; overflow:hidden; margin-top:2px;}
+  .kpi-bar > div{ height:100%; background: var(--ice); }
+
+  /* ---------- Energy flow diagram ---------- */
+  .flow-wrap{ display:flex; align-items:center; gap:0; }
+  .flow-col{ display:flex; flex-direction:column; gap:10px; min-width:140px; }
+  .flow-node{
+    border:1px solid var(--border); border-radius:var(--radius); padding:9px 11px;
+    display:flex; align-items:center; gap:9px; background:var(--panel-alt);
+    font-size:12.5px;
+  }
+  .flow-node .ic{ width:16px; height:16px; flex-shrink:0; }
+  .flow-node .val{ margin-left:auto; font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-dim); }
+  .flow-bus{
+    flex:1; margin:0 18px; align-self:stretch; display:flex; align-items:center; justify-content:center; position:relative;
+    min-height:180px;
+  }
+  .flow-bus .bus-line{ width:2px; background: linear-gradient(var(--ice-dim), var(--ice), var(--ice-dim)); height:100%; position:relative; }
+  .flow-bus .bus-label{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg);
+    font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:2px; color:var(--text-faint); white-space:nowrap;
+  }
+  .flow-load{
+    border:1px solid var(--ice-dim); border-radius:var(--radius); padding:14px 16px; background:var(--panel-alt);
+    min-width:150px;
+  }
+  .flow-load .lbl{ font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-faint); letter-spacing:1px; }
+  .flow-load .lval{ font-size:22px; font-weight:600; font-family:'IBM Plex Mono',monospace; margin-top:4px;}
+
+  /* ---------- Alerts ---------- */
+  .alert-row{ display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--border-soft); align-items:flex-start; }
+  .alert-row:last-child{ border-bottom:none; }
+  .alert-sev{ width:7px; height:7px; border-radius:50%; margin-top:5px; flex-shrink:0; }
+  .alert-sev.info{ background:var(--ice); }
+  .alert-sev.warn{ background:var(--amber); }
+  .alert-sev.crit{ background:var(--coral); }
+  .alert-text{ font-size:12.5px; color:var(--text); }
+  .alert-time{ font-size:10.5px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; margin-top:2px;}
+
+  /* ---------- Buttons / tabs / toggles ---------- */
+  .seg{ display:inline-flex; border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+  .seg button{
+    background:transparent; border:none; color:var(--text-dim); font-family:'Space Grotesk';
+    font-size:12px; padding:6px 13px; cursor:pointer; border-right:1px solid var(--border);
+  }
+  .seg button:last-child{ border-right:none; }
+  .seg button.active{ background:var(--ice-dim); color:var(--ice); }
+
+  /* ---------- Charts (SVG) ---------- */
+  .chart-legend{ display:flex; gap:14px; font-size:11px; color:var(--text-dim); margin-top:8px; flex-wrap:wrap; }
+  .chart-legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .chart-legend i{ width:9px; height:9px; border-radius:2px; display:inline-block; }
+
+  /* ---------- Table-like lists ---------- */
+  .list-row{
+    display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border-soft);
+  }
+  .list-row:last-child{ border-bottom:none; }
+  .list-icon{ width:30px; height:30px; border-radius:var(--radius); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; flex-shrink:0; background:var(--panel-alt);}
+  .list-icon svg{ width:16px; height:16px; }
+  .list-main{ flex:1; min-width:0; }
+  .list-title{ font-size:13px; font-weight:500; }
+  .list-sub{ font-size:11px; color:var(--text-faint); font-family:'IBM Plex Mono',monospace; margin-top:1px;}
+  .badge{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; padding:3px 8px; border-radius:20px; letter-spacing:0.3px;
+    border:1px solid; white-space:nowrap;
+  }
+  .badge.ok{ color:var(--aurora); border-color: var(--aurora); background:rgba(110,231,168,0.08);}
+  .badge.warn{ color:var(--amber); border-color:var(--amber); background:rgba(242,179,92,0.08);}
+  .badge.crit{ color:var(--coral); border-color:var(--coral); background:rgba(240,102,90,0.08);}
+  .badge.neutral{ color:var(--text-dim); border-color:var(--border); background:transparent;}
+
+  .health-bar{ width:90px; height:5px; background:var(--grid-line); border-radius:3px; overflow:hidden; }
+  .health-bar > div{ height:100%; }
+
+  /* ---------- Gauges ---------- */
+  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .gauge-num{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:20px; margin-top:-52px; }
+  .gauge-lbl{ font-size:11.5px; color:var(--text-dim); text-align:center; }
+
+  /* ---------- Sliders (scenario simulator) ---------- */
+  .sim-control{ margin-bottom:18px; }
+  .sim-control-head{ display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:7px; }
+  .sim-control-head .v{ font-family:'IBM Plex Mono',monospace; color:var(--ice); }
+  input[type=range]{
+    -webkit-appearance:none; width:100%; height:3px; background:var(--border); border-radius:2px; outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--ice);
+    cursor:pointer; box-shadow: 0 0 0 3px rgba(95,208,224,0.18);
+  }
+
+  .divider{ height:1px; background:var(--border-soft); margin: 16px 0; }
+
+  .small-note{ font-size:11.5px; color:var(--text-faint); line-height:1.6; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="topbar">
+    <div class="station-select">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" stroke="#4fc3e0" stroke-width="1.4" opacity="0.5"/>
+            <path d="M16 4 L16 28 M6 10 L26 22 M26 10 L6 22" stroke="#4fc3e0" stroke-width="1.4"/>
+            <circle cx="16" cy="16" r="3" fill="#4fc3e0"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">PolarGrid <span style="color:var(--ice)">AI</span></div>
+          <div class="brand-sub">AURORA RIDGE STATION</div>
+        </div>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="status-pill"><span class="dot"></span> Sat Online</div>
+      <div class="status-pill mono">Mode Auto</div>
+      <div class="status-pill mono" style="color:var(--amber); border-color: var(--amber);">Simulated</div>
+      <div class="clock">
+        <div id="clockTime" class="mono">00:00:00</div>
+        <div class="date" id="clockDate">â€”</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="navbar" id="sidebar">
+    <div class="nav-item active" data-view="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Overview
+    </div>
+    <div class="nav-item" data-view="forecast">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 18h16M6 18l3-6 3 3 4-8 2 4"/></svg>
+      Forecasting
+    </div>
+    <div class="nav-item" data-view="dispatch">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>
+      AI Dispatch
+    </div>
+    <div class="nav-item" data-view="sources">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+      Energy Sources
+    </div>
+    <div class="nav-item" data-view="kpi">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21h18M6 21V10M12 21V4M18 21v-7"/></svg>
+      KPIs &amp; Sustainability
+    </div>
+    <div class="nav-item" data-view="equipment">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M14.7 6.3a1 1 0 0 0 1.4 1.4l2.1-2.1a4 4 0 0 1-5.7 5.7L4 20l-1-1 8.7-8.7a4 4 0 0 1 5.7-5.7l-2.1 2.1Z"/></svg>
+      Equipment Health
+    </div>
+    <div class="nav-item" data-view="comms">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 12a7 7 0 0 1 14 0M2 9a10 10 0 0 1 20 0M12 21v-6m0 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></svg>
+      Communications
+    </div>
+    <div class="nav-item" data-view="sim">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4v16h16M8 16l3-4 3 3 4-6"/></svg>
+      Scenario Simulator
+    </div>
+  </div>
+
+  <main>
+
+    <!-- ================= OVERVIEW ================= -->
+    <section class="view active" id="view-overview">
+      <div class="view-head">
+        <div>
+          <div class="view-title">Station Overview</div>
+          <div class="view-desc">Live power balance across Aurora Ridge Station's hybrid microgrid</div>
+        </div>
+        <div class="status-pill mono">POLAR NIGHT Â· -34Â°C Â· WIND 22kt</div>
+      </div>
+
+      <div class="grid cols-5" style="margin-bottom:14px;">
+        <div class="panel kpi">
+          <div class="panel-label">RENEWABLE FRACTION</div>
+          <div class="kpi-value">68<span class="unit">%</span></div>
+          <div class="kpi-delta" style="color:var(--text-faint)">rolling average of load served</div>
+        </div>
+        <div class="panel kpi">
+          <div class="panel-label">BATTERY SOC</div>
+          <div class="kpi-value">76<span class="unit">%</span></div>
+          <div class="kpi-delta up">Charging 5.1 kW</div>
+        </div>
+        <div class="panel kpi">
+          <div class="panel-label">STATION LOAD</div>
+          <div class="kpi-value">22.9<span class="unit">kW</span></div>
+          <div class="kpi-delta" style="color:var(--text-faint)">bus supply 22.9 kW</div>
+        </div>
+        <div class="panel kpi">
+          <div class="panel-label">DIESEL GENERATOR</div>
+          <div class="kpi-value">0<span class="unit">kW</span></div>
+          <div class="kpi-delta" style="color:var(--text-faint)">Standby fuel 82%</div>
+        </div>
+        <div class="panel kpi">
+          <div class="panel-label">OUTDOOR CONDITIONS</div>
+          <div class="kpi-value">-28.5<span class="unit">Â°C</span></div>
+          <div class="kpi-delta" style="color:var(--text-faint)">wind 12.3 m/s Â· Online link</div>
+        </div>
+      </div>
+
+      <div class="grid cols-3" style="align-items:start;">
+        <div class="panel" style="grid-column: span 2;">
+          <div class="panel-corner tl"></div><div class="panel-corner br"></div>
+          <div class="panel-label">LIVE POWER FLOW<span class="mono" style="color:var(--text-faint)">bus 22.9 kW in Â· 22.9 kW out</span></div>
+          <div class="flow-wrap">
+            <div class="flow-col">
+              <div class="flow-node"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#f0ad4e" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Solar PV <span class="val mono">4.2kW Â· Normal</span></div>
+              <div class="flow-node"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#4fc3e0" stroke-width="1.8"><path d="M4 12h6m0 0 3-7v7h4l-6 10v-7H8Z"/></svg>Wind <span class="val mono">18.7kW Â· Normal</span></div>
+              <div class="flow-node"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#9fb0bd" stroke-width="1.8"><rect x="4" y="8" width="13" height="9" rx="1"/><path d="M17 11h3l1 2v4h-4"/></svg>Diesel <span class="val mono">0kW Â· Standby</span></div>
+              <div class="flow-node"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#57e0a8" stroke-width="1.8"><path d="M7 2v6M11 2v6M7 8h4l-1 6h3l-6 8 1-8H5Z"/></svg>Fuel Cell <span class="val mono">0kW Â· Idle</span></div>
+              <div class="flow-node"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#57e0a8" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 2h4v2h-4z"/></svg>Battery <span class="val mono">76% Â· Charging</span></div>
+            </div>
+            <div class="flow-bus"><div class="bus-line"><div class="bus-label">MAIN DC/AC BUS</div></div></div>
+            <div class="flow-col" style="min-width:150px;">
+              <div class="flow-load">
+                <div class="lbl">STATION LOADS</div>
+                <div class="lval">22.9 kW</div>
+                <div class="small-note" style="margin-top:8px;">demand</div>
+              </div>
+            </div>
+          </div>
+          <div class="small-note" style="margin-top:10px;">Line thickness scales with power magnitude. Battery flow reverses direction while charging.</div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-label">ACTIVE ALERTS<span class="mono" style="color:var(--coral)">2 active</span></div>
+          <div class="alert-row">
+            <div class="alert-sev warn"></div>
+            <div>
+              <div class="alert-text">Wind turbine WT-03: possible blade icing detected</div>
+              <div class="alert-time">09:47:53 UTC Â· warning</div>
+            </div>
+          </div>
+          <div class="alert-row">
+            <div class="alert-sev info"></div>
+            <div>
+              <div class="alert-text">Battery bank BAT-01 balancing cycle scheduled 02:00</div>
+              <div class="alert-time">09:47:53 UTC Â· info</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-3" style="align-items:start; margin-top:14px;">
+        <div class="panel" style="grid-column: span 2;">
+          <div class="panel-label">GENERATION MIX Â· LAST 30 SAMPLES</div>
+          <svg id="chart-mix" viewBox="0 0 700 170" style="width:100%; height:170px;"></svg>
+          <div class="chart-legend">
+            <span><i style="background:var(--amber)"></i>Solar</span>
+            <span><i style="background:var(--ice)"></i>Wind</span>
+            <span><i style="background:var(--aurora)"></i>Battery</span>
+            <span><i style="background:var(--diesel)"></i>Diesel</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-label">CURRENT AI DECISION<span class="mono" style="color:var(--text-faint)">Mode Auto</span></div>
+          <div style="font-size:13px; font-weight:500; margin-bottom:8px;">Charging battery from solar and wind surplus; diesel on standby</div>
+          <div class="small-note">Forecast wind stays above 15 kW for 6h and load is stable. Storing surplus now avoids a diesel start during the pre-dawn load peak.</div>
+          <div class="divider"></div>
+          <div class="small-note">Objective: <span class="mono" style="color:var(--ice)">Minimize fuel burn</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= FORECASTING ================= -->
+    <section class="view" id="view-forecast">
+      <div class="view-head">
+        <div>
+          <div class="view-title">Forecasting</div>
+          <div class="view-desc">48-hour weather, generation and load predictions from the edge forecast layer</div>
+        </div>
+        <div class="seg"><button class="active">24h</button><button>48h</button><button>7d</button></div>
+      </div>
+
+      <div class="grid cols-4" style="margin-bottom:14px;">
+        <div class="panel kpi"><div class="panel-label">TEMPERATURE (NEXT 6H)</div><div class="kpi-value">-36<span class="unit">Â°C</span></div><div class="small-note">LSTM weather model Â· 92% confidence</div></div>
+        <div class="panel kpi"><div class="panel-label">WIND SPEED</div><div class="kpi-value">27<span class="unit">kt</span></div><div class="small-note">Gusting to 38kt after 03:00</div></div>
+        <div class="panel kpi"><div class="panel-label">SOLAR IRRADIANCE</div><div class="kpi-value">0<span class="unit">W/mÂ²</span></div><div class="small-note">Polar night â€” sunrise in 61 days</div></div>
+        <div class="panel kpi"><div class="panel-label">PEAK LOAD FORECAST</div><div class="kpi-value">94<span class="unit">kW</span></div><div class="small-note">Expected at 07:00 (shift change)</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <div class="panel">
+          <div class="panel-label">RENEWABLE GENERATION FORECAST Â· 24H</div>
+          <svg id="chart-gen" viewBox="0 0 480 200" style="width:100%; height:200px;"></svg>
+          <div class="chart-legend">
+            <span><i style="background:var(--ice)"></i>Wind (kW)</span>
+            <span><i style="background:var(--amber)"></i>Solar (kW)</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">STATION LOAD FORECAST Â· 24H</div>
+          <svg id="chart-load" viewBox="0 0 480 200" style="width:100%; height:200px;"></svg>
+          <div class="chart-legend">
+            <span><i style="background:var(--diesel)"></i>Predicted load (kW)</span>
+            <span><i style="background:var(--coral)"></i>Confidence band</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= AI DISPATCH ================= -->
+    <section class="view" id="view-dispatch">
+      <div class="view-head">
+        <div>
+          <div class="view-title">AI Dispatch &amp; Optimization</div>
+          <div class="view-desc">Model Predictive Control + Reinforcement Learning dispatch strategy for the next horizon</div>
+        </div>
+        <div class="seg"><button class="active">MPC</button><button>RL Agent</button><button>Hybrid</button></div>
+      </div>
+
+      <div class="grid cols-3">
+        <div class="panel" style="grid-column: span 2;">
+          <div class="panel-label">OPTIMIZED 24H DISPATCH SCHEDULE</div>
+          <svg id="chart-dispatch" viewBox="0 0 700 220" style="width:100%; height:220px;"></svg>
+          <div class="chart-legend">
+            <span><i style="background:var(--amber)"></i>Solar</span>
+            <span><i style="background:var(--ice)"></i>Wind</span>
+            <span><i style="background:var(--aurora)"></i>Battery discharge</span>
+            <span><i style="background:var(--diesel)"></i>Diesel (standby)</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-label">CURRENT DECISION</div>
+          <div style="font-size:13px; color:var(--text-dim); margin-bottom:10px;">Charging battery from renewable surplus; diesel held on standby.</div>
+          <div class="list-row">
+            <div class="list-main"><div class="list-title">Renewable surplus detected</div><div class="list-sub">+14 kW available</div></div>
+            <span class="badge ok">ACT</span>
+          </div>
+          <div class="list-row">
+            <div class="list-main"><div class="list-title">Battery charging</div><div class="list-sub">rate 12 kW Â· SOC target 80%</div></div>
+            <span class="badge ok">ON</span>
+          </div>
+          <div class="list-row">
+            <div class="list-main"><div class="list-title">Diesel Gen 1</div><div class="list-sub">idle, warm standby</div></div>
+            <span class="badge neutral">STANDBY</span>
+          </div>
+          <div class="list-row">
+            <div class="list-main"><div class="list-title">Non-critical load shedding</div><div class="list-sub">not required</div></div>
+            <span class="badge neutral">OFF</span>
+          </div>
+          <div class="divider"></div>
+          <div class="small-note">Policy: <span class="mono" style="color:var(--ice)">DQN / PPO</span> via Stable-Baselines3, constrained by MPC solver (Pyomo / CVXPY) over SOC, fuel and load-shed limits.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= ENERGY SOURCES ================= -->
+    <section class="view" id="view-sources">
+      <div class="view-head">
+        <div>
+          <div class="view-title">Energy Sources</div>
+          <div class="view-desc">Real-time output and status per generation and storage asset</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2b35c" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></div>
+          <div class="list-main"><div class="list-title">Solar PV Array</div><div class="list-sub">42 panels Â· 40kW rated</div></div>
+          <div class="health-bar"><div style="width:0%; background:var(--diesel)"></div></div>
+          <span class="badge neutral">DARK â€” NIGHT</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#5fd0e0" stroke-width="1.8"><path d="M4 12h6m0 0 3-7v7h4l-6 10v-7H8Z"/></svg></div>
+          <div class="list-main"><div class="list-title">Wind Turbine 1</div><div class="list-sub">15kW rated Â· yaw auto</div></div>
+          <div class="health-bar"><div style="width:78%; background:var(--ice)"></div></div>
+          <span class="badge ok">GENERATING 11kW</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#5fd0e0" stroke-width="1.8"><path d="M4 12h6m0 0 3-7v7h4l-6 10v-7H8Z"/></svg></div>
+          <div class="list-main"><div class="list-title">Wind Turbine 2</div><div class="list-sub">15kW rated Â· light icing</div></div>
+          <div class="health-bar"><div style="width:46%; background:var(--amber)"></div></div>
+          <span class="badge warn">DERATED 7kW</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#9aa7b0" stroke-width="1.8"><rect x="4" y="8" width="13" height="9" rx="1"/><path d="M17 11h3l1 2v4h-4"/></svg></div>
+          <div class="list-main"><div class="list-title">Diesel Generator 1</div><div class="list-sub">80kW rated Â· coolant temp elevated</div></div>
+          <div class="health-bar"><div style="width:31%; background:var(--diesel)"></div></div>
+          <span class="badge warn">STANDBY â€” FLAGGED</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#9aa7b0" stroke-width="1.8"><rect x="4" y="8" width="13" height="9" rx="1"/><path d="M17 11h3l1 2v4h-4"/></svg></div>
+          <div class="list-main"><div class="list-title">Diesel Generator 2</div><div class="list-sub">80kW rated Â· N+1 backup</div></div>
+          <div class="health-bar"><div style="width:96%; background:var(--aurora)"></div></div>
+          <span class="badge neutral">OFF â€” READY</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" stroke-width="1.8"><path d="M7 2v6M11 2v6M7 8h4l-1 6h3l-6 8 1-8H5Z"/></svg></div>
+          <div class="list-main"><div class="list-title">Hydrogen Fuel Cell</div><div class="list-sub">Summer-stored Hâ‚‚ reserve Â· 68% tank</div></div>
+          <div class="health-bar"><div style="width:88%; background:var(--aurora)"></div></div>
+          <span class="badge ok">IDLE — STANDBY</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 2h4v2h-4z"/></svg></div>
+          <div class="list-main"><div class="list-title">Battery Bank (BMS)</div><div class="list-sub">LiFePOâ‚„ Â· 220kWh Â· heated enclosure</div></div>
+          <div class="health-bar"><div style="width:76%; background:var(--aurora)"></div></div>
+          <span class="badge ok">DISCHARGING 12kW Â· SOC 58%</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= KPIs & SUSTAINABILITY ================= -->
+    <section class="view" id="view-kpi">
+      <div class="view-head">
+        <div>
+          <div class="view-title">KPIs &amp; Sustainability</div>
+          <div class="view-desc">Impact of AI-driven dispatch versus the station's diesel-only baseline</div>
+        </div>
+      </div>
+
+      <div class="grid cols-3" style="margin-bottom:14px;">
+        <div class="panel">
+          <div class="panel-label">RENEWABLE UTILIZATION</div>
+          <div style="display:flex; justify-content:center;"><svg width="150" height="90" viewBox="0 0 150 90">
+            <path d="M15 80 A60 60 0 0 1 135 80" stroke="var(--grid-line)" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path d="M15 80 A60 60 0 0 1 135 80" stroke="var(--ice)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="189" stroke-dashoffset="34"/>
+          </svg></div>
+          <div style="text-align:center; margin-top:-48px;"><div class="mono" style="font-size:22px; font-weight:600;">89.9%</div></div>
+          <div class="gauge-lbl" style="margin-top:38px;">vs 12% diesel-only baseline</div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">BATTERY STATE OF HEALTH</div>
+          <div style="display:flex; justify-content:center;"><svg width="150" height="90" viewBox="0 0 150 90">
+            <path d="M15 80 A60 60 0 0 1 135 80" stroke="var(--grid-line)" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path d="M15 80 A60 60 0 0 1 135 80" stroke="var(--aurora)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="189" stroke-dashoffset="122"/>
+          </svg></div>
+          <div style="text-align:center; margin-top:-48px;"><div class="mono" style="font-size:22px; font-weight:600;">34.6%</div></div>
+          <div class="gauge-lbl" style="margin-top:38px;">current state of charge</div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">STATION UPTIME</div>
+          <div style="display:flex; justify-content:center;"><svg width="150" height="90" viewBox="0 0 150 90">
+            <path d="M15 80 A60 60 0 0 1 135 80" stroke="var(--grid-line)" stroke-width="10" fill="none" stroke-linecap="round"/>
+            <path d="M15 80 A60 60 0 0 1 135 80" stroke="var(--ice)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="189" stroke-dashoffset="4"/>
+          </svg></div>
+          <div style="text-align:center; margin-top:-48px;"><div class="mono" style="font-size:22px; font-weight:600;">99.8%</div></div>
+          <div class="gauge-lbl" style="margin-top:38px;">rolling 90-day average</div>
+        </div>
+      </div>
+
+      <div class="grid cols-4" style="margin-bottom:14px;">
+        <div class="panel kpi"><div class="panel-label">DIESEL BURNED (YTD)</div><div class="kpi-value">14.96<span class="unit">kL</span></div><div class="small-note">-41% vs prior-year pace</div></div>
+        <div class="panel kpi"><div class="panel-label">DIESEL COST AVOIDED</div><div class="kpi-value">â‚¹4200<span class="unit">/day</span></div><div class="small-note">at delivered cost â‚¹450â€“650/L</div></div>
+        <div class="panel kpi"><div class="panel-label">COST SAVINGS (YTD)</div><div class="kpi-value">$49.0<span class="unit">k</span></div><div class="small-note">tracking to â‚¹4â€“5+ Cr / station / yr</div></div>
+        <div class="panel kpi"><div class="panel-label">COâ‚‚ AVOIDED (YTD)</div><div class="kpi-value">99.80<span class="unit">t</span></div><div class="small-note">~38Ã— a solar-only baseline</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">CUMULATIVE DIESEL CONSUMPTION vs RENEWABLE PREDICTION TREND</div>
+        <svg id="chart-trend" viewBox="0 0 900 170" style="width:100%; height:170px;"></svg>
+      </div>
+    </section>
+
+    <!-- ================= EQUIPMENT HEALTH ================= -->
+    <section class="view" id="view-equipment">
+      <div class="view-head">
+        <div>
+          <div class="view-title">Equipment Health</div>
+          <div class="view-desc">Predictive maintenance signals across the station's field devices</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" stroke-width="1.8"><rect x="4" y="8" width="13" height="9" rx="1"/><path d="M17 11h3l1 2v4h-4"/></svg></div>
+          <div class="list-main"><div class="list-title">Diesel Generator 2</div><div class="list-sub">Runtime 1,240h Â· last service 38 days ago</div></div>
+          <div class="health-bar"><div style="width:96%; background:var(--aurora)"></div></div>
+          <span class="badge ok">HEALTHY</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2b35c" stroke-width="1.8"><rect x="4" y="8" width="13" height="9" rx="1"/><path d="M17 11h3l1 2v4h-4"/></svg></div>
+          <div class="list-main"><div class="list-title">Diesel Generator 1</div><div class="list-sub">Coolant temp trending +6Â°C over 48h</div></div>
+          <div class="health-bar"><div style="width:41%; background:var(--amber)"></div></div>
+          <span class="badge warn">WATCH â€” INSPECT</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f2b35c" stroke-width="1.8"><path d="M4 12h6m0 0 3-7v7h4l-6 10v-7H8Z"/></svg></div>
+          <div class="list-main"><div class="list-title">Wind Turbine 2</div><div class="list-sub">Blade icing signature detected</div></div>
+          <div class="health-bar"><div style="width:46%; background:var(--amber)"></div></div>
+          <span class="badge warn">DE-ICING SCHEDULED</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" stroke-width="1.8"><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 2h4v2h-4z"/></svg></div>
+          <div class="list-main"><div class="list-title">Battery Management System</div><div class="list-sub">Cell balancing nominal Â· enclosure 4Â°C</div></div>
+          <div class="health-bar"><div style="width:91%; background:var(--aurora)"></div></div>
+          <span class="badge ok">HEALTHY</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#5fd0e0" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg></div>
+          <div class="list-main"><div class="list-title">Solar Inverters (Ã—4)</div><div class="list-sub">Offline for polar night â€” self-test passed</div></div>
+          <div class="health-bar"><div style="width:100%; background:var(--aurora)"></div></div>
+          <span class="badge neutral">DORMANT â€” OK</span>
+        </div>
+        <div class="list-row">
+          <div class="list-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6ee7a8" stroke-width="1.8"><path d="M7 2v6M11 2v6M7 8h4l-1 6h3l-6 8 1-8H5Z"/></svg></div>
+          <div class="list-main"><div class="list-title">Hydrogen Fuel Cell Stack</div><div class="list-sub">Runtime 640h Â· efficiency within spec</div></div>
+          <div class="health-bar"><div style="width:83%; background:var(--aurora)"></div></div>
+          <span class="badge ok">HEALTHY</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= COMMUNICATIONS ================= -->
+    <section class="view" id="view-comms">
+      <div class="view-head">
+        <div>
+          <div class="view-title">Communications</div>
+          <div class="view-desc">Edge-first architecture keeps dispatch running through low-bandwidth, intermittent links</div>
+        </div>
+      </div>
+
+      <div class="grid cols-3" style="margin-bottom:14px;">
+        <div class="panel kpi"><div class="panel-label">LINK STATUS</div><div class="kpi-value" style="font-size:20px; color:var(--aurora)">STORE &amp; FORWARD</div><div class="small-note">Delay-Tolerant Networking (DTN) active</div></div>
+        <div class="panel kpi"><div class="panel-label">LAST SATELLITE SYNC</div><div class="kpi-value">41<span class="unit">min ago</span></div><div class="small-note">Models &amp; telemetry backlog cleared</div></div>
+        <div class="panel kpi"><div class="panel-label">AUTONOMOUS OPERATION</div><div class="kpi-value">100<span class="unit">%</span></div><div class="small-note">Forecasting &amp; dispatch run entirely on-site</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">DATA PIPELINE</div>
+        <div class="list-row"><div class="list-main"><div class="list-title">Sensors â†’ IoT Gateway</div><div class="list-sub">MQTT / Modbus Â· local, always on</div></div><span class="badge ok">ACTIVE</span></div>
+        <div class="list-row"><div class="list-main"><div class="list-title">Edge Controller / PLC</div><div class="list-sub">EMS logic executing on-site, -40Â°C rated</div></div><span class="badge ok">ACTIVE</span></div>
+        <div class="list-row"><div class="list-main"><div class="list-title">Local data storage</div><div class="list-sub">SQLite / InfluxDB buffering for offline periods</div></div><span class="badge ok">BUFFERING</span></div>
+        <div class="list-row"><div class="list-main"><div class="list-title">Satellite modem (DTN)</div><div class="list-sub">Intermittent off-site sync, store-and-forward</div></div><span class="badge warn">INTERMITTENT</span></div>
+        <div class="list-row"><div class="list-main"><div class="list-title">Remote server / cloud</div><div class="list-sub">Model retraining, cross-station backup</div></div><span class="badge neutral">SYNCED 41M AGO</span></div>
+      </div>
+    </section>
+
+    <!-- ================= SCENARIO SIMULATOR ================= -->
+    <section class="view" id="view-sim">
+      <div class="view-head">
+        <div>
+          <div class="view-title">Scenario Simulator</div>
+          <div class="view-desc">Stress-test the dispatch strategy against storms, low renewables or equipment loss</div>
+        </div>
+      </div>
+
+      <div class="grid cols-3">
+        <div class="panel">
+          <div class="panel-label">SCENARIO CONTROLS</div>
+
+          <div class="sim-control">
+            <div class="sim-control-head"><span>Storm severity</span><span class="v mono" id="lbl-storm">Moderate</span></div>
+            <input type="range" min="0" max="100" value="40" id="sim-storm">
+          </div>
+          <div class="sim-control">
+            <div class="sim-control-head"><span>Wind availability</span><span class="v mono" id="lbl-wind">65%</span></div>
+            <input type="range" min="0" max="100" value="65" id="sim-wind">
+          </div>
+          <div class="sim-control">
+            <div class="sim-control-head"><span>Days without resupply</span><span class="v mono" id="lbl-resupply">120 days</span></div>
+            <input type="range" min="0" max="240" value="120" id="sim-resupply">
+          </div>
+          <div class="sim-control">
+            <div class="sim-control-head"><span>Generator 1 availability</span><span class="v mono" id="lbl-gen">Online</span></div>
+            <input type="range" min="0" max="1" value="1" id="sim-gen">
+          </div>
+
+          <div class="divider"></div>
+          <div class="small-note">Runs the same MPC + RL policy against the modified horizon â€” no live equipment is affected.</div>
+        </div>
+
+        <div class="panel" style="grid-column: span 2;">
+          <div class="panel-label">PROJECTED OUTCOME Â· 72H HORIZON</div>
+          <svg id="chart-sim" viewBox="0 0 700 200" style="width:100%; height:200px;"></svg>
+          <div class="chart-legend">
+            <span><i style="background:var(--aurora)"></i>Battery SOC (%)</span>
+            <span><i style="background:var(--diesel)"></i>Diesel runtime (h/day)</span>
+          </div>
+          <div class="divider"></div>
+          <div class="grid cols-3">
+            <div><div class="panel-label" style="margin-bottom:4px;">MIN PROJECTED SOC</div><div class="kpi-value mono" id="sim-out-soc" style="font-size:20px;">31%</div></div>
+            <div><div class="panel-label" style="margin-bottom:4px;">DIESEL NEEDED</div><div class="kpi-value mono" id="sim-out-diesel" style="font-size:20px;">2.4h/day</div></div>
+            <div><div class="panel-label" style="margin-bottom:4px;">LOAD-SHED RISK</div><div class="kpi-value mono" id="sim-out-risk" style="font-size:20px; color:var(--amber)">Low</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // ---------------- Clock ----------------
+  function tick(){
+    const now = new Date();
+    document.getElementById('clockTime').textContent = now.toLocaleTimeString('en-GB');
+    document.getElementById('clockDate').textContent = now.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric', year:'numeric'});
+  }
+  tick(); setInterval(tick, 1000);
+
+  // ---------------- Nav ----------------
+  document.querySelectorAll('.nav-item').forEach(item=>{
+    item.addEventListener('click', ()=>{
+      document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+      item.classList.add('active');
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      document.getElementById('view-' + item.dataset.view).classList.add('active');
+    });
+  });
+
+  // ---------------- Tiny SVG chart helpers ----------------
+  function pathFromPoints(pts, w, h, max, min){
+    min = min ?? 0;
+    const n = pts.length;
+    const stepX = w / (n - 1);
+    const scaleY = v => h - ((v - min) / (max - min)) * h;
+    return pts.map((v,i)=> (i===0?'M':'L') + (i*stepX).toFixed(1) + ' ' + scaleY(v).toFixed(1)).join(' ');
+  }
+  function areaFromPoints(pts, w, h, max, min){
+    const line = pathFromPoints(pts, w, h, max, min);
+    return line + ` L ${w} ${h} L 0 ${h} Z`;
+  }
+  function gridLines(svg, w, h, rows){
+    let s = '';
+    for(let i=0;i<=rows;i++){
+      const y = (h/rows)*i;
+      s += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="var(--grid-line)" stroke-width="1"/>`;
+    }
+    svg.innerHTML += s;
+  }
+
+  // ---------------- Overview: generation mix chart ----------------
+  (function(){
+    const svg = document.getElementById('chart-mix');
+    const w=700,h=150; svg.setAttribute('viewBox',`0 0 ${w} ${h+20}`);
+    gridLines(svg, w, h, 4);
+    const n=30;
+    const solar = Array.from({length:n},()=>0.3+Math.random()*0.6);
+    const wind = Array.from({length:n},(_,i)=>14+6*Math.sin(i/4)+Math.random()*2);
+    const batt = Array.from({length:n},(_,i)=>3+2*Math.cos(i/5));
+    const diesel = Array.from({length:n},()=>0);
+    const max=28;
+    function stackPath(base, add, color){
+      const top = base.map((b,i)=>b+add[i]);
+      let s = pathFromPoints(top, w, h, max, 0);
+      s += ` L ${w} ${h - ((base[n-1])/max)*h}`;
+      for(let i=n-1;i>=0;i--){
+        const x=w/(n-1)*i, y=h-((base[i])/max)*h;
+        s+= ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+      }
+      s+=' Z';
+      svg.innerHTML += `<path d="${s}" fill="${color}" opacity="0.85"/>`;
+      return top;
+    }
+    let base = Array(n).fill(0);
+    base = stackPath(base, solar, 'var(--amber)');
+    base = stackPath(base, wind, 'var(--ice)');
+    base = stackPath(base, batt, 'var(--aurora)');
+    stackPath(base, diesel, 'var(--diesel)');
+  })();
+
+  // ---------------- Forecast: generation chart ----------------
+  (function(){
+    const svg = document.getElementById('chart-gen');
+    const w=480,h=180; svg.setAttribute('viewBox',`0 0 ${w} ${h+20}`);
+    gridLines(svg, w, h, 4);
+    const hours=24;
+    const wind = Array.from({length:hours}, (_,i)=> 10 + 8*Math.sin(i/3) + Math.random()*3);
+    const solar = Array.from({length:hours}, ()=> 0.3 + Math.random()*0.4); // near-zero, polar night
+    svg.innerHTML += `<path d="${areaFromPoints(wind, w, h, 24, 0)}" fill="rgba(95,208,224,0.15)"/>`;
+    svg.innerHTML += `<path d="${pathFromPoints(wind, w, h, 24, 0)}" stroke="var(--ice)" stroke-width="2" fill="none"/>`;
+    svg.innerHTML += `<path d="${pathFromPoints(solar, w, h, 24, 0)}" stroke="var(--amber)" stroke-width="2" fill="none" stroke-dasharray="3 3"/>`;
+  })();
+
+  // ---------------- Forecast: load chart ----------------
+  (function(){
+    const svg = document.getElementById('chart-load');
+    const w=480,h=180; svg.setAttribute('viewBox',`0 0 ${w} ${h+20}`);
+    gridLines(svg, w, h, 4);
+    const hours=24;
+    const load = Array.from({length:hours}, (_,i)=> 78 + 14*Math.sin((i-7)/4) + Math.random()*4);
+    const upper = load.map(v=>v+8);
+    const lower = load.map(v=>v-8);
+    const band = pathFromPoints(upper, w, h, 110, 60) + ' L ' + lower.slice().reverse().map((v,i)=>{
+      const idx = lower.length-1-i;
+      const x = w/(lower.length-1)*idx;
+      const y = h - ((v-60)/(110-60))*h;
+      return x.toFixed(1)+' '+y.toFixed(1);
+    }).join(' L ') + ' Z';
+    svg.innerHTML += `<path d="${band}" fill="rgba(240,102,90,0.08)"/>`;
+    svg.innerHTML += `<path d="${pathFromPoints(load, w, h, 110, 60)}" stroke="var(--diesel)" stroke-width="2" fill="none"/>`;
+  })();
+
+  // ---------------- Dispatch stacked chart ----------------
+  (function(){
+    const svg = document.getElementById('chart-dispatch');
+    const w=700,h=190; svg.setAttribute('viewBox',`0 0 ${w} ${h+30}`);
+    gridLines(svg, w, h, 4);
+    const n=24;
+    const solar = Array.from({length:n},()=>0.5+Math.random());
+    const wind = Array.from({length:n},(_,i)=>9+6*Math.sin(i/3)+Math.random()*2);
+    const batt = Array.from({length:n},(_,i)=>14+6*Math.cos(i/4));
+    const diesel = Array.from({length:n},(_,i)=> i%6===0? 5+Math.random()*3 : 0.6);
+    const max=45;
+    function stackPath(base, add, color){
+      const top = base.map((b,i)=>b+add[i]);
+      let s = pathFromPoints(top, w, h, max, 0);
+      s += ` L ${w} ${h - ((base[n-1])/max)*h}`;
+      for(let i=n-1;i>=0;i--){
+        const x=w/(n-1)*i, y=h-((base[i])/max)*h;
+        s+= ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+      }
+      s+=' Z';
+      svg.innerHTML += `<path d="${s}" fill="${color}" opacity="0.85"/>`;
+      return top;
+    }
+    let base = Array(n).fill(0);
+    base = stackPath(base, solar, 'var(--amber)');
+    base = stackPath(base, wind, 'var(--ice)');
+    base = stackPath(base, batt, 'var(--aurora)');
+    stackPath(base, diesel, 'var(--diesel)');
+  })();
+
+  // ---------------- KPI trend chart ----------------
+  (function(){
+    const svg = document.getElementById('chart-trend');
+    const w=900,h=140; svg.setAttribute('viewBox',`0 0 ${w} ${h+30}`);
+    gridLines(svg, w, h, 4);
+    const n=30;
+    const diesel = Array.from({length:n},(_,i)=> 100 - i*2.4 + Math.random()*3);
+    const renew = Array.from({length:n},(_,i)=> 40 + i*1.9 + Math.random()*3);
+    svg.innerHTML += `<path d="${pathFromPoints(diesel, w, h, 100, 0)}" stroke="var(--coral)" stroke-width="2" fill="none"/>`;
+    svg.innerHTML += `<path d="${pathFromPoints(renew, w, h, 100, 0)}" stroke="var(--aurora)" stroke-width="2" fill="none"/>`;
+  })();
+
+  // ---------------- Scenario simulator ----------------
+  const simEls = {
+    storm: document.getElementById('sim-storm'),
+    wind: document.getElementById('sim-wind'),
+    resupply: document.getElementById('sim-resupply'),
+    gen: document.getElementById('sim-gen'),
+  };
+  function stormLabel(v){
+    if(v<20) return 'Calm';
+    if(v<45) return 'Light';
+    if(v<70) return 'Moderate';
+    if(v<90) return 'Severe';
+    return 'Extreme';
+  }
+  function runSim(){
+    const storm = +simEls.storm.value;
+    const wind = +simEls.wind.value;
+    const resupply = +simEls.resupply.value;
+    const genOnline = +simEls.gen.value === 1;
+
+    document.getElementById('lbl-storm').textContent = stormLabel(storm);
+    document.getElementById('lbl-wind').textContent = wind + '%';
+    document.getElementById('lbl-resupply').textContent = resupply + ' days';
+    document.getElementById('lbl-gen').textContent = genOnline ? 'Online' : 'Offline';
+
+    const hours=72;
+    const socSeries=[]; const dieselSeries=[];
+    let soc = 70;
+    for(let i=0;i<hours;i++){
+      const windGen = (wind/100) * (6 + 4*Math.sin(i/6)) * (1 - storm/220);
+      const load = 3.4 + 0.6*Math.sin(i/8);
+      const gens = genOnline ? 1 : 0.55;
+      const netCharge = (windGen - load) * gens;
+      soc = Math.max(8, Math.min(100, soc + netCharge*0.8 - (resupply/240)*0.15));
+      socSeries.push(soc);
+      dieselSeries.push(Math.max(0, (load - windGen*gens) * (genOnline?1:1.6)));
+    }
+
+    const svg = document.getElementById('chart-sim');
+    const w=700,h=170;
+    svg.innerHTML='';
+    svg.setAttribute('viewBox', `0 0 ${w} ${h+30}`);
+    gridLines(svg, w, h, 4);
+    svg.innerHTML += `<path d="${areaFromPoints(socSeries, w, h, 100, 0)}" fill="rgba(110,231,168,0.12)"/>`;
+    svg.innerHTML += `<path d="${pathFromPoints(socSeries, w, h, 100, 0)}" stroke="var(--aurora)" stroke-width="2" fill="none"/>`;
+    const dieselScaled = dieselSeries.map(v=>v*10);
+    svg.innerHTML += `<path d="${pathFromPoints(dieselScaled, w, h, 100, 0)}" stroke="var(--diesel)" stroke-width="1.6" fill="none" stroke-dasharray="3 3"/>`;
+
+    const minSoc = Math.min(...socSeries).toFixed(0);
+    const avgDiesel = (dieselSeries.reduce((a,b)=>a+b,0)/hours).toFixed(1);
+    document.getElementById('sim-out-soc').textContent = minSoc + '%';
+    document.getElementById('sim-out-diesel').textContent = avgDiesel + 'h/day';
+    const riskEl = document.getElementById('sim-out-risk');
+    if(minSoc < 20){ riskEl.textContent='High'; riskEl.style.color='var(--coral)'; }
+    else if(minSoc < 40){ riskEl.textContent='Moderate'; riskEl.style.color='var(--amber)'; }
+    else { riskEl.textContent='Low'; riskEl.style.color='var(--aurora)'; }
+  }
+  Object.values(simEls).forEach(el => el.addEventListener('input', runSim));
+  runSim();
+</script>
+<script>
+    const API_BASE = "http://127.0.0.1:8000";
+    
+    async function loadDashboard() {
+      try {
+        const [overview, kpis, sources, equipment] = await Promise.all([
+          fetch(`${API_BASE}/api/overview`).then(r => r.json()),
+          fetch(`${API_BASE}/api/kpis`).then(r => r.json()),
+          fetch(`${API_BASE}/api/sources`).then(r => r.json()),
+          fetch(`${API_BASE}/api/equipment`).then(r => r.json())
+        ]);
+    
+        const current = overview.current;
+    
+        window.polarGridData = {
+          overview,
+          kpis,
+          sources,
+          equipment
+        };
+    
+        const set = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.textContent = value;
+        };
+    
+        set("sim-out-soc", `${kpis.battery_soc_pct}%`);
+        set("sim-out-diesel", `${kpis.diesel_generator_kw} kW`);
+        set("backend-status", "CONNECTED");
+    
+        document.body.dataset.backend = "connected";
+        console.log("PolarGrid frontend/backend connected", window.polarGridData);
+      } catch (error) {
+        document.body.dataset.backend = "disconnected";
+        console.error("Backend connection failed:", error);
+      }
+    }
+    
+    loadDashboard();
+    setInterval(loadDashboard, 60000);
+    </script>
+</body>
+</html>
